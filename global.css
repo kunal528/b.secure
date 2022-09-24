@@ -1,0 +1,114 @@
+body {
+    width: 300px;
+    background: #000;
+    color: white;
+    padding: 0px;
+}
+
+:root {
+    --primary: rgb(76, 175, 80);
+}
+
+.navbar {
+    display: flex;
+    padding: 0.5rem;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #fafafa;
+}
+
+.balance-text {
+    font-size: 16px;
+    color: #fff;
+    font-weight: bold;
+}
+
+.navbar-button {
+    color: var(--primary);
+    border: 1px solid var(--primary);
+    border-radius: 5px;
+    padding: 0.5rem;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    cursor: pointer;
+}
+.navbar-button:hover {
+    background-color: var(--primary);
+    color: white;
+}
+
+.content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px 0;
+    padding: 0.5rem;
+}
+
+.tile {
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+}
+
+.tile-title {
+    font-size: 14px;
+    color: #fff;
+}
+
+.tile-button {
+    background:rgba(255,255,255, 0.2);
+    border-radius: 5px;
+    color: white;
+    padding: 0.5rem;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    cursor: pointer;
+}
+
+.action {
+    padding: 0.5rem 0;
+}
+
+.action-button {
+    background:rgba(255,255,255, 0.2);
+    border-radius: 5px;
+    width: calc(100% - 1rem);
+    color: white;
+    padding: 0.5rem;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    cursor: pointer;
+}
+
+.primary-button {
+    background:rgba(255,255,255, 0.2);
+    border-radius: 5px;
+    color: white;
+    padding: 0.5rem;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    cursor: pointer;
+}
+
+.logo {
+    width: 100px;
+    height: 100px;
+    object-fit: fill;
+}
+
+.user-input {
+    width: 100%;
+    background: rgba(255,255,255, 0.4);
+    color: white;
+    border: none;
+    outline: none;
+    padding: 0.5rem;
+    border-radius: 5px;
+}
