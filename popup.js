@@ -1,21 +1,53 @@
-// import Web3 from 'web3';
+import { ethers } from "./ethers.min.js";
 // Initialize butotn with users's prefered color
 let changeColor = document.getElementById("changeColor");
 
 let app = document.getElementById("app")
 
-const provider = new ethers.providers.Web3Provider(window.ethereum)
+const provider = new ethers.providers.JsonRpcProvider("https://rpc-mumbai.maticvigil.com");
 
-console.log(provider)
 
-function home() {
+const account = null;
+
+chrome.storage.sync.get("account", function (result) {
+  if (!result) {
+    var account = ethers.Wallet.createRandom()
+    chrome.storage.sync.set({
+      "account": {
+        "privateKey": account.privateKey,
+        "address": account.address
+      }
+    }, function () { })
+  }
+  account = result.account;
+  console.log(account)
+})
+
+function updateBalance() {
+  chrome.storage.sync.get("account", function (result) {
+    if (result) {
+      var account = result.account;
+      var privateKey = account.privateKey;
+      let wallet = new ethers.Wallet(privateKey, provider);
+      wallet.getBalance().then((balance) => {
+        var coins = document.getElementsByClassName("balance-text")[0];
+        var data = (BigNumber(balance).toString())
+        console.log(data)
+        coins.innerText = ethers.utils.formatEther(balance) + " MATIC"
+      })
+    }
+  });
+}
+
+async function home() {
   let passwords = [1, 2, 3]
-  let coins = 10
+  updateBalance()
+  let coins = 0
   function navbar() {
     let navbar = document.createElement("div");
     navbar.classList.add("navbar");
     let back = document.createElement("div");
-    back.innerText = "Back";
+    back.innerHTML = "<img src='icons/back.svg' style='object-fit: cover;height:10px;width: 20px;'/>Back";
     back.style.opacity = '0';
     let title = document.createElement("div");
     title.innerText = coins + " MATIC";
@@ -83,8 +115,8 @@ function add_fund_view() {
   function navbar() {
     let navbar = document.createElement("div");
     navbar.classList.add("navbar");
-    let back = document.createElement("div");
-    back.innerText = "Back";
+    let back = document.createElement("span");
+    back.innerHTML = "<img src='icons/back.svg' style='object-fit: cover;height:10px;width: 20px;'/>Back";
     back.addEventListener("click", () => {
       historyPage.pop()
       render()
@@ -104,13 +136,18 @@ function add_fund_view() {
     let text = document.createElement("h1")
     text.classList.add("heading")
     text.innerText = "Add Some MATIC to"
-    let account = document.createElement("div")
-    account.classList.add("account")
-    account.innerText = "0xA3B38051Bf77067fcCb02D83eCEF9CcE27c81A31"
-    account.addEventListener("click", () => {
-      // copy to clipboard
-      navigator.clipboard.writeText(account.innerText)
-    })
+    let _account = document.createElement("div")
+    _account.classList.add("account")
+    console.log(account)
+    chrome.storage.sync.get("account", function (result) {
+      if (result) {
+        _account.innerText = result.account.address.substring(0, 10) + "..." + result.account.address.substring(result.account.address.length - 4,);
+        _account.addEventListener("click", () => {
+          // copy to clipboard
+          navigator.clipboard.writeText(result.account.address)
+        })
+      }
+    });
     let button = document.createElement("div")
     button.classList.add("action-button")
     button.innerText = "Add Funds"
@@ -118,7 +155,7 @@ function add_fund_view() {
       // open metamask
       window.open("https://wallet.matic.network/")
     })
-    content.append(logo, text, account, button)
+    content.append(logo, text, _account, button)
     app.appendChild(content);
   }
   app.innerHTML = "";
@@ -127,11 +164,12 @@ function add_fund_view() {
 }
 
 function add_details() {
+  updateBalance()
   function navbar() {
     let navbar = document.createElement("div");
     navbar.classList.add("navbar");
     let back = document.createElement("div");
-    back.innerText = "Back";
+    back.innerHTML = "<img src='icons/back.svg' style='object-fit: cover;height:10px;width: 20px;'/>Back";
     back.addEventListener("click", () => {
       historyPage.pop()
       render()
