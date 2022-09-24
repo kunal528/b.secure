@@ -112,3 +112,11 @@ body {
     padding: 0.5rem;
     border-radius: 5px;
 }
+
+.loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 300px;
+    width: 100%;
+}

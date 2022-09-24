@@ -1,10 +1,30 @@
 import { ethers } from "./ethers.min.js";
+import Contract from './contracts/sample.json' assert { type: "json" };
 // Initialize butotn with users's prefered color
 let changeColor = document.getElementById("changeColor");
 
 let app = document.getElementById("app")
+const CONTRACT_ADDRESS = '0x032FD6B1f03a4522e91E8daAC93121B1d22A7468'
+const RPC_URL = 'https://rpc-mumbai.maticvigil.com'
 
-const provider = new ethers.providers.JsonRpcProvider("https://rpc-mumbai.maticvigil.com");
+const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
+
+
+const contract = new ethers.Contract(CONTRACT_ADDRESS, Contract.abi, provider);
+
+async function getPassword(url) {
+  if (url) {
+    var data = await contract.getAllbyUrl(url)
+    return data
+  }
+  var data = await contract.getAll()
+  return data
+}
+
+async function setCreditentials({ url, username, password }) {
+  await contract.set(url, username, password)
+}
+
 
 
 const account = null;
@@ -39,8 +59,17 @@ function updateBalance() {
   });
 }
 
+function loading() {
+  var loading = document.createElement("div");
+  loading.classList.add("loading");
+  loading.innerHTML = "<div>Loading...</div>";
+  app.appendChild(loading);
+}
+
 async function home() {
-  let passwords = [1, 2, 3]
+  loading()
+  let passwords = await getPassword()
+  console.log(passwords)
   updateBalance()
   let coins = 0
   function navbar() {
@@ -163,8 +192,19 @@ function add_fund_view() {
   content()
 }
 
+async function autoFillField() {
+  let passwords = await getPassword()
+  let username = document.getElementById("uname")
+  let password = document.getElementById("pass")
+  console.log(passwords)
+  username.value = 'kjdsflkdsj'
+  password.value = 'kljdflksjdlk'
+
+}
+
 function add_details() {
   updateBalance()
+  autoFillField()
   function navbar() {
     let navbar = document.createElement("div");
     navbar.classList.add("navbar");
@@ -182,14 +222,16 @@ function add_details() {
     app.appendChild(navbar);
   }
   function content() {
-    let content = document.createElement('div');
+    let content = document.createElement('form');
     content.classList.add("content");
     let userinput = document.createElement("input")
     userinput.classList.add("user-input")
+    userinput.id = "uname"
     userinput.type = "text"
     userinput.placeholder = "Enter Email"
     let passinput = document.createElement("input")
     passinput.classList.add("user-input")
+    passinput.id = "pass"
     passinput.type = "password"
     passinput.placeholder = "Enter Password"
     let button = document.createElement("div")
@@ -222,8 +264,6 @@ function render() {
 }
 render()
 
-
-
 function createPasswordTile(content) {
   let tile = document.createElement("div");
   tile.classList.add("tile");
@@ -236,43 +276,3 @@ function createPasswordTile(content) {
   tile.append(title, button);
   content.appendChild(tile);
 }
-
-function createPasswords(content) {
-  print("Creating passwords");
-  for (let index = 0; index < 3; index++) {
-    createPasswordTile(content)
-  }
-}
-
-function getBalance() {
-  let balance = document.getElementsByClassName("balance-text")[0];
-  balance.innerText = "10 MATIC"
-}
-
-
-
-
-
-// chrome.storage.sync.get("color", ({ color }) => {
-//   changeColor.style.backgroundColor = color;
-// });
-
-// // When the button is clicked, inject setPageBackgroundColor into current page
-// changeColor.addEventListener("click", async () => {
-//   console.log("clicked");
-//   let [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-
-//   chrome.scripting.executeScript({
-//     target: { tabId: tab.id },
-//     function: setPageBackgroundColor,
-//   });
-
-// });
-
-// // The body of this function will be execuetd as a content script inside the
-// // current page
-// function setPageBackgroundColor() {
-//   chrome.storage.sync.get("color", ({ color }) => {
-//     document.body.style.color = color;
-//   });
-// }
