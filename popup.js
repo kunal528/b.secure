@@ -1,28 +1,87 @@
 import { ethers } from "./ethers.min.js";
-import Contract from './contracts/sample.json' assert { type: "json" };
+import Contract from './contracts/SecureVault.json' assert { type: "json" };
 // Initialize butotn with users's prefered color
 let changeColor = document.getElementById("changeColor");
 
 let app = document.getElementById("app")
-const CONTRACT_ADDRESS = '0x032FD6B1f03a4522e91E8daAC93121B1d22A7468'
+const CONTRACT_ADDRESS = '0x6872967283CB2e20C6aB554EAdf8Db31A819320f'
 const RPC_URL = 'https://rpc-mumbai.maticvigil.com'
 
 const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
 
 
-const contract = new ethers.Contract(CONTRACT_ADDRESS, Contract.abi, provider);
+const contract = new ethers.Contract(CONTRACT_ADDRESS, Contract, provider);
 
-async function getPassword(url) {
-  if (url) {
-    var data = await contract.getAllbyUrl(url)
-    return data
-  }
-  var data = await contract.getAll()
+
+const historyPage = ["home"];
+
+async function getCreditentials({ url, account }) {
+
+  var privateKey = account.privateKey;
+  let wallet = new ethers.Wallet(privateKey, provider);
+  let contractWithSigner = contract.connect(wallet);
+  var data = await contractWithSigner.getAll()
   return data
+
 }
 
+chrome.storage.local.get("creditentals", function (result) {
+  if (result.creditentals) {
+    var creditentals = result.creditentals;
+    if (Object.keys(creditentals).length > 1) {
+      console.log(creditentals)
+      historyPage.push('add_details')
+      render()
+      return
+    }
+  }
+  render()
+})
+
+
+function getAESInstance(account) {
+  var instance = new aesjs.ModeOfOperation.ctr(aesjs.utils.utf8.toBytes(account.privateKey.substring(0, 16)), new aesjs.Counter(0));
+  console.log(instance)
+  return instance
+}
+
+async function encryptText(text) {
+  await chrome.storage.sync.get("account", async function (result) {
+    if (result.account) {
+      var inBytes = aesjs.utils.utf8.toBytes(text);
+      console.log('bytes : ', inBytes);
+      var encryptedBytes = getAESInstance(result.account).encrypt(inBytes);
+      console.log('encrypted bytes : ', encryptedBytes);
+      var encryptedHex = aesjs.utils.hex.fromBytes(encryptedBytes);
+      console.log('encrypted hex : ', encryptedHex);
+      return encryptedHex;
+    }
+  });
+}
+
+function decryptText(encryptHex) {
+  var encryptedBytes = aesjs.utils.hex.toBytes(encryptHex);
+  var decryptedBytes = getAESInstance().decrypt(encryptedBytes);
+  console.log('decrypted bytes : ', decryptedBytes);
+  var decryptedText = aesjs.utils.utf8.fromBytes(decryptedBytes);
+  console.log('decrypted text : ', decryptedText);
+  return decryptedText;
+}
 async function setCreditentials({ url, username, password }) {
-  await contract.set(url, username, password)
+  var encryptPass = await encryptText(password)
+  console.log(url, username, password)
+  console.log(encryptPass)
+  chrome.storage.sync.get("account", async function (result) {
+    if (result) {
+      var account = result.account;
+      var privateKey = account.privateKey;
+      let wallet = new ethers.Wallet(privateKey, provider);
+      let contractWithSigner = contract.connect(wallet);
+      console.log(url, username, encryptPass)
+      await contractWithSigner.set(url, username, password).catch(console.log)
+      chrome.storage.local.remove(['creditentials'], function () { })
+    }
+  });
 }
 
 
@@ -40,7 +99,6 @@ chrome.storage.sync.get("account", function (result) {
     }, function () { })
   }
   account = result.account;
-  console.log(account)
 })
 
 function updateBalance() {
@@ -53,7 +111,7 @@ function updateBalance() {
         var coins = document.getElementsByClassName("balance-text")[0];
         var data = (BigNumber(balance).toString())
         console.log(data)
-        coins.innerText = ethers.utils.formatEther(balance) + " MATIC"
+        coins.innerText = ethers.utils.formatEther(balance).substring(0, 5) + " MATIC"
       })
     }
   });
@@ -68,76 +126,82 @@ function loading() {
 
 async function home() {
   loading()
-  let passwords = await getPassword()
-  console.log(passwords)
-  updateBalance()
-  let coins = 0
-  function navbar() {
-    let navbar = document.createElement("div");
-    navbar.classList.add("navbar");
-    let back = document.createElement("div");
-    back.innerHTML = "<img src='icons/back.svg' style='object-fit: cover;height:10px;width: 20px;'/>Back";
-    back.style.opacity = '0';
-    let title = document.createElement("div");
-    title.innerText = coins + " MATIC";
-    title.classList.add('balance-text');
-    let addFunds = document.createElement("div");
-    addFunds.innerText = "Add Funds";
-    addFunds.classList.add("navbar-button");
-    addFunds.addEventListener("click", () => {
-
-      // navigate to add funds page
-      historyPage.push("add_fund")
-      render()
-    });
-    navbar.append(back, title, addFunds);
-    app.appendChild(navbar);
-  }
-
-  function content() {
-    let content = document.createElement('div');
-    content.classList.add("content");
-    if (passwords.length == 0) {
-      let text = document.createElement("h2")
-      text.classList.add("heading")
-      text.innerText = "No Passwords"
-      let button = document.createElement("div")
-      button.classList.add("primary-button")
-      button.innerText = " + "
-      button.addEventListener("click", () => {
-        // navigate to add password page
-        historyPage.push("add_details")
-        render()
+  chrome.storage.sync.get("account", async function (result) {
+    if (result) {
+      let passwords = await getCreditentials({
+        account: result.account,
       })
-      content.append(text, button)
-    }
-    passwords.forEach(element => {
-      createPasswordTile(content)
-    });
-    // createPasswords(content)
-    app.appendChild(content);
-  }
+      console.log(passwords)
+      updateBalance()
+      let coins = 0
+      function navbar() {
+        let navbar = document.createElement("div");
+        navbar.classList.add("navbar");
+        let back = document.createElement("div");
+        back.innerHTML = "<img src='icons/back.svg' style='object-fit: cover;height:10px;width: 20px;'/>Back";
+        back.style.opacity = '0';
+        let title = document.createElement("div");
+        title.innerText = coins + " MATIC";
+        title.classList.add('balance-text');
+        let addFunds = document.createElement("div");
+        addFunds.innerText = "Add Funds";
+        addFunds.classList.add("navbar-button");
+        addFunds.addEventListener("click", () => {
 
-  function action() {
-    let action = document.createElement('div');
-    action.classList.add("action");
-    if (passwords.length != 0) {
-      let button = document.createElement("div");
-      button.classList.add("action-button");
-      button.innerText = "Add More";
-      button.addEventListener("click", () => {
-        // navigate to add password page
-        historyPage.push("add_details")
-        render()
-      })
-      action.appendChild(button);
+          // navigate to add funds page
+          historyPage.push("add_fund")
+          render()
+        });
+        navbar.append(back, title, addFunds);
+        app.appendChild(navbar);
+      }
+
+      function content() {
+        let content = document.createElement('div');
+        content.classList.add("content");
+        if (passwords.length == 0) {
+          let text = document.createElement("h2")
+          text.classList.add("heading")
+          text.innerText = "No Passwords"
+          let button = document.createElement("div")
+          button.classList.add("primary-button")
+          button.innerText = " + "
+          button.addEventListener("click", () => {
+            // navigate to add password page
+            historyPage.push("add_details")
+            render()
+          })
+          content.append(text, button)
+        }
+        passwords.forEach(element => {
+          createPasswordTile(content, element)
+        });
+        // createPasswords(content)
+        app.appendChild(content);
+      }
+
+      function action() {
+        let action = document.createElement('div');
+        action.classList.add("action");
+        if (passwords.length != 0) {
+          let button = document.createElement("div");
+          button.classList.add("action-button");
+          button.innerText = "Add More";
+          button.addEventListener("click", () => {
+            // navigate to add password page
+            historyPage.push("add_details")
+            render()
+          })
+          action.appendChild(button);
+        }
+        app.appendChild(action);
+      }
+      app.innerHTML = "";
+      navbar()
+      content()
+      action()
     }
-    app.appendChild(action);
-  }
-  app.innerHTML = "";
-  navbar()
-  content()
-  action()
+  });
 }
 
 function add_fund_view() {
@@ -193,14 +257,20 @@ function add_fund_view() {
 }
 
 async function autoFillField() {
-  let passwords = await getPassword()
-  let username = document.getElementById("uname")
-  let password = document.getElementById("pass")
-  console.log(passwords)
-  username.value = 'kjdsflkdsj'
-  password.value = 'kljdflksjdlk'
+  chrome.storage.local.get("creditentals", function (result) {
+    if (result.creditentals) {
+      let creditentals = result.creditentals;
+      let username = document.getElementById("uname")
+      let password = document.getElementById("pass")
+      console.log(creditentals)
+      username.value = creditentals['0']
+      password.value = creditentals['1']
+    }
+  });
 
 }
+
+
 
 function add_details() {
   updateBalance()
@@ -237,6 +307,19 @@ function add_details() {
     let button = document.createElement("div")
     button.classList.add("action-button")
     button.innerText = "Add"
+    button.addEventListener("click", () => {
+      let username = document.getElementById("uname")
+      let password = document.getElementById("pass")
+      //get url from current tab
+      chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+        let url = tabs[0].url;
+        setCreditentials({
+          url: url,
+          username: username.value,
+          password: password.value
+        })
+      });
+    })
     content.append(userinput, passinput, button)
     app.appendChild(content);
   }
@@ -244,7 +327,6 @@ function add_details() {
   content()
 }
 
-const historyPage = ["home"];
 
 function render() {
   app.innerHTML = "";
@@ -262,17 +344,26 @@ function render() {
       break;
   }
 }
-render()
 
-function createPasswordTile(content) {
+function createPasswordTile(content, data) {
   let tile = document.createElement("div");
   tile.classList.add("tile");
   let title = document.createElement("div");
   title.classList.add("tile-title");
-  title.innerText = "jainkunal976@gmail.com";
+  title.innerText = data.username;
   let button = document.createElement("div");
   button.classList.add("tile-button");
   button.innerText = "Next";
+  button.addEventListener("click", () => {
+    // navigate to add password page
+    chrome.tabs.query({ 'active': true, 'lastFocusedWindow': true }, function (tabs) {
+      // request content_script to retrieve title element innerHTML from current tab
+      chrome.tabs.sendMessage(tabs[0].id, "getInputs", null, function (obj) {
+        
+      });
+
+    });
+  });
   tile.append(title, button);
   content.appendChild(tile);
 }
