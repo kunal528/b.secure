@@ -18,23 +18,11 @@ function inputChangeCallBack(event) {
 // listen to input changes
 document.addEventListener("input", inputChangeCallBack, true);
 
-chrome.runtime.onMessage.addListener(function (cmd, sender, sendResponse) {
-    switch (cmd) {
-        case "getHtml":
-            // retrieve document HTML and send to popup.js
-            sendResponse({
-                title: document.title,
-                url: window.location.href,
-                html: document.documentElement.innerHTML,
-            });
-            break;
-        case "getInputs":
-            // retrieve title HTML and send to popup.js
-            console.log(Array.from(document.getElementsByTagName("input")).map((e) => e.value));
-            sendResponse(document.getElementsByTagName("input")[0].value);
-            break;
-        default:
-            sendResponse(null);
-    }
+chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
+    var inputs = document.getElementsByTagName("input");
+    inputs[0].value = request.username;
+    inputs[1].value = request.password;
+    inputs[0].style.backgroundColor = "yellow";
+    inputs[1].style.backgroundColor = "yellow";
 });
 

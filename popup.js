@@ -51,7 +51,19 @@ async function getCreditentials({ url, account }) {
     let wallet = new ethers.Wallet(privateKey, provider);
     let contractWithSigner = contract.connect(wallet);
     var data = await contractWithSigner.getAll()
-    return data
+    console.log(data)
+    var parsedData = [];
+    for (const element in data) {
+      const elementData = data[element];
+      console.log(elementData, account)
+      var decryptedPass = decryptText({
+        account: account,
+        encryptHex: elementData.password
+      })
+      parsedData.push({ ...elementData, password: decryptedPass })
+
+    }
+    return parsedData
   }
   return [];
 
@@ -65,41 +77,47 @@ function getAESInstance(account) {
   return instance
 }
 
-async function encryptText(text) {
-  await chrome.storage.sync.get("account", async function (result) {
-    if (result.account) {
-      var inBytes = aesjs.utils.utf8.toBytes(text);
-      console.log('bytes : ', inBytes);
-      var encryptedBytes = getAESInstance(result.account).encrypt(inBytes);
-      console.log('encrypted bytes : ', encryptedBytes);
-      var encryptedHex = aesjs.utils.hex.fromBytes(encryptedBytes);
-      console.log('encrypted hex : ', encryptedHex);
-      return encryptedHex;
-    }
-  });
+function encryptText({ account, text }) {
+  console.log(account)
+  if (account) {
+    var inBytes = aesjs.utils.utf8.toBytes(text);
+    console.log('bytes : ', inBytes);
+    var encryptedBytes = getAESInstance(account).encrypt(inBytes);
+    console.log('encrypted bytes : ', encryptedBytes);
+    var encryptedHex = aesjs.utils.hex.fromBytes(encryptedBytes);
+    console.log('encrypted hex : ', encryptedHex);
+    return encryptedHex;
+  }
+  return '';
 }
 
-function decryptText(encryptHex) {
+function decryptText({ account, encryptHex }) {
+  console.log(account, encryptHex)
   var encryptedBytes = aesjs.utils.hex.toBytes(encryptHex);
-  var decryptedBytes = getAESInstance().decrypt(encryptedBytes);
+  var decryptedBytes = getAESInstance(account).decrypt(encryptedBytes);
   console.log('decrypted bytes : ', decryptedBytes);
   var decryptedText = aesjs.utils.utf8.fromBytes(decryptedBytes);
   console.log('decrypted text : ', decryptedText);
   return decryptedText;
 }
 async function setCreditentials({ url, username, password }) {
-  var encryptPass = await encryptText(password)
   console.log(url, username, password)
-  console.log(encryptPass)
   chrome.storage.sync.get("account", async function (result) {
     if (result) {
+      var encrpytPass = encryptText({
+        account: result.account,
+        text: password
+      })
+      console.log(encrpytPass)
       var account = result.account;
       var privateKey = account.privateKey;
       let wallet = new ethers.Wallet(privateKey, provider);
       let contractWithSigner = contract.connect(wallet);
-      console.log(url, username, encryptPass)
-      await contractWithSigner.set(url, username, password).catch(console.log)
-      chrome.storage.local.remove(['creditentials'], function () { })
+      contractWithSigner.set(url, username, encrpytPass).catch(console.log)
+      chrome.storage.local.set({ 'creditentals': null }, function () {
+        historyPage.pop()
+        render()
+      });
     }
   });
 }
@@ -363,7 +381,10 @@ function createPasswordTile(content, data) {
     // navigate to add password page
     chrome.tabs.query({ 'active': true, 'lastFocusedWindow': true }, function (tabs) {
       // request content_script to retrieve title element innerHTML from current tab
-      chrome.tabs.sendMessage(tabs[0].id, "getInputs", null, function (obj) {
+      chrome.tabs.sendMessage(tabs[0].id, {
+        username: data.username,
+        password: data.password,
+      }, null, function (obj) {
 
       });
 
