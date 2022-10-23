@@ -15,15 +15,21 @@ const contract = new ethers.Contract(CONTRACT_ADDRESS, Contract, provider);
 
 const historyPage = ["home"];
 
-async function getCreditentials({ url, account }) {
 
-  var privateKey = account.privateKey;
-  let wallet = new ethers.Wallet(privateKey, provider);
-  let contractWithSigner = contract.connect(wallet);
-  var data = await contractWithSigner.getAll()
-  return data
+const account = null;
 
-}
+chrome.storage.sync.get("account", function (result) {
+  if (!result.account) {
+    var account = ethers.Wallet.createRandom()
+    chrome.storage.sync.set({
+      "account": {
+        "privateKey": account.privateKey,
+        "address": account.address
+      }
+    }, function () { })
+  }
+  account = result.account;
+})
 
 chrome.storage.local.get("creditentals", function (result) {
   if (result.creditentals) {
@@ -37,6 +43,20 @@ chrome.storage.local.get("creditentals", function (result) {
   }
   render()
 })
+
+async function getCreditentials({ url, account }) {
+
+  if (account) {
+    var privateKey = account.privateKey;
+    let wallet = new ethers.Wallet(privateKey, provider);
+    let contractWithSigner = contract.connect(wallet);
+    var data = await contractWithSigner.getAll()
+    return data
+  }
+  return [];
+
+}
+
 
 
 function getAESInstance(account) {
@@ -85,21 +105,6 @@ async function setCreditentials({ url, username, password }) {
 }
 
 
-
-const account = null;
-
-chrome.storage.sync.get("account", function (result) {
-  if (!result) {
-    var account = ethers.Wallet.createRandom()
-    chrome.storage.sync.set({
-      "account": {
-        "privateKey": account.privateKey,
-        "address": account.address
-      }
-    }, function () { })
-  }
-  account = result.account;
-})
 
 function updateBalance() {
   chrome.storage.sync.get("account", function (result) {
@@ -359,7 +364,7 @@ function createPasswordTile(content, data) {
     chrome.tabs.query({ 'active': true, 'lastFocusedWindow': true }, function (tabs) {
       // request content_script to retrieve title element innerHTML from current tab
       chrome.tabs.sendMessage(tabs[0].id, "getInputs", null, function (obj) {
-        
+
       });
 
     });
